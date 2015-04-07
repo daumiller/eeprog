@@ -4,7 +4,7 @@
 
 //==============================================================================
 // Definitions
-#define VERSION "0.1.0"
+#define VERSION "0.1.1"
 
 #define EEPROM_CS 2
 #define EEPROM_WE 3
@@ -36,7 +36,7 @@ void set_addr_bus(byte high, byte low);
 byte eeprom_read_byte(byte high, byte low);
 bool eeprom_write_byte(byte high, byte low, byte data);
 void eeprom_read_page(byte high, byte low, byte *buffer);
-void eeprom_write_page(byte high, byte low, byte *buffer);
+bool eeprom_write_page(byte high, byte low, byte *buffer);
 
 void page_increment(byte *high, byte *low);
 bool memcmp(char *a, char *b, byte length);
@@ -61,7 +61,7 @@ char *str_command = str_command_data;
 byte serial_read_byte;
 byte flags = 0;
 
-byte chunk_buffer_data[PAGE_SIZE * 9]; // 8 pages * 64 B == 512 B
+byte chunk_buffer_data[PAGE_SIZE * 8]; // 8 pages * 64 B == 512 B
 byte verify_buffer_data[PAGE_SIZE];    // verify one page at a time
 byte *page_buffer;                     // page read/write location
 
@@ -82,7 +82,7 @@ void setup() {
   pinMode(ADDR_BUS_RCLK,  OUTPUT);
   SPI.begin();
   SPI.setBitOrder(MSBFIRST);
-  
+
   // Status LEDs
   pinMode(STATUS_LED1, OUTPUT); digitalWrite(STATUS_LED1, LOW);
   pinMode(STATUS_LED2, OUTPUT); digitalWrite(STATUS_LED1, LOW);
@@ -92,7 +92,7 @@ void setup() {
   Serial.begin(SERIAL_BAUD_SPEED);
   while(!Serial) { ; }
   Serial.println("EEPROG Ready");
-  
+
   // LED1 Ready
   digitalWrite(STATUS_LED1, HIGH);
 }
@@ -203,7 +203,7 @@ void serial_cmd_chunk_read(char *cmd) {
       Serial.write('\n');
     }
   }
-  
+
   digitalWrite(STATUS_LED3, LOW);
 }
 
@@ -235,7 +235,10 @@ void serial_cmd_chunk_write(char *cmd) {
   page_index = 0;
   high = origin_high; low = origin_low;
   while(page_index < pages) {
-    eeprom_write_page(high, low, page_buffer);
+    if(eeprom_write_page(high, low, page_buffer) == false) {
+      digitalWrite(STATUS_LED2, LOW);
+      return;
+    }
     page_increment(&high, &low);
     page_buffer += PAGE_SIZE;
     page_index++;
@@ -273,11 +276,11 @@ void serialEventRun() { if(Serial.available()) serialEvent(); }
 void serial_read_line() {
   str_command = str_command_data;
   byte ch = 0x00;
-  
+
   while(ch != '\n') {
     if(!Serial.available()) { continue; }
     ch = Serial.read();
-    
+
     if(ch != '\n') {
       if(ch != '\r') {
         *str_command = (char)ch;
@@ -330,7 +333,7 @@ bool scan_hex_byte(char *cmd, byte *data) {
     Serial.print("Unrecognized hex character '"); Serial.write(*cmd); Serial.println("'.");
     return false;
   }
-  
+
   return true;
 }
 
@@ -362,7 +365,7 @@ bool scan_chunk_params(char *cmd, byte *high, byte *low, byte *pages) {
     Serial.print("Chunk Error: Chunks may only be 1-8 pages (attempted to use "); Serial.print(*pages); Serial.println(").");
     return false;
   }
-  
+
   return true;
 }
 
@@ -425,7 +428,7 @@ byte eeprom_read_byte(byte high, byte low) {
 // expects Address to already be set, and EEPROM_CS to already be low
 bool eeprom_read_through_toggle(byte target) {
   byte value, prev, ii, cc = 0;
-  
+
   for(ii=DATA_BUS_HIGH; ii>DATA_BUS_UNDER; ii--) { pinMode(ii, INPUT); }
   digitalWrite(EEPROM_OE, LOW);
   for(ii=DATA_BUS_HIGH; ii>DATA_BUS_UNDER; ii--) { value <<= 1; value |= digitalRead(ii); }
@@ -440,15 +443,9 @@ bool eeprom_read_through_toggle(byte target) {
     digitalWrite(EEPROM_OE, HIGH);
     cc++;
   }
-  
+
   for(ii=DATA_BUS_HIGH; ii>DATA_BUS_UNDER; ii--) { pinMode(ii, OUTPUT); }
-  if(cc == WRITE_BYTE_VERIFY_ATTEMPTS) {
-    Serial.println("FAIL: gave up waiting for write cycle to stop toggling...");
-    return false;
-  } else if(value != target) {
-    Serial.println("FAIL: read a different byte than wrote...");
-    return false;
-  }
+  if((cc == WRITE_BYTE_VERIFY_ATTEMPTS) || (value != target)) { return false; }
   return true;
 }
 
@@ -459,12 +456,13 @@ bool eeprom_write_byte(byte high, byte low, byte data) {
   set_data_bus(data);
   digitalWrite(EEPROM_CS, LOW);
   digitalWrite(EEPROM_WE, LOW);
-  _a = ~high;
-  _b = ~low;
+  _a = ~high; // intentionally wasting cycles
+  _b = ~low;  // may not be needed w/ faster EEPROM or slower Arduino
   digitalWrite(EEPROM_WE, HIGH);
 
   bool verified = eeprom_read_through_toggle(data);
   digitalWrite(EEPROM_CS, HIGH);
+  if(verified == false) { Serial.println("FAIL: byte write verification failed."); }
 
   return verified;
 }
@@ -489,7 +487,7 @@ void eeprom_read_page(byte high, byte low, byte *buffer) {
   for(ii=DATA_BUS_HIGH; ii>DATA_BUS_UNDER; ii--) { pinMode(ii, OUTPUT); }
 }
 
-void eeprom_write_page(byte high, byte low, byte *buffer) {
+bool eeprom_write_page(byte high, byte low, byte *buffer) {
   byte ii, byte_verify, byte_last;
   digitalWrite(EEPROM_CS, LOW);
 
@@ -501,13 +499,10 @@ void eeprom_write_page(byte high, byte low, byte *buffer) {
     low++;
     digitalWrite(EEPROM_WE, HIGH);
   }
+
+  bool verified = eeprom_read_through_toggle(*(buffer-1));
   digitalWrite(EEPROM_CS, HIGH);
 
-  low--;
-  byte_last = *(buffer-1);
-  byte_verify = ~byte_last;
-  while((ii < WRITE_BYTE_VERIFY_ATTEMPTS) && (byte_verify != byte_last)) {
-    byte_verify = eeprom_read_byte(high, low);
-    ii++;
-  }
+  if(verified == false) { Serial.println("FAIL: page write verification failed."); }
+  return verified;
 }

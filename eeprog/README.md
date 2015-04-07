@@ -15,6 +15,10 @@
   * requires `serialport` (`gem install serialport`)
   * may switch to `rubyserial` in the future
 
+**Specs**
+* Read 32 KiB in 5 seconds.
+* Write 32 KiB in 12 seconds.
+
 **License**
 
 * Source code is released under the 2-Clause BSD License (see [LICENSE](https://github.com/daumiller/bitshiffed/blob/master/LICENSE) file).

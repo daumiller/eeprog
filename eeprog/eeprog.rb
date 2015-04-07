@@ -38,7 +38,7 @@ class Options
     $stderr.puts "ERROR: #{message}"
     if usage
       puts ''
-      option_show_usage
+      show_usage
     end
 
     exit status

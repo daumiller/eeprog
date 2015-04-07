@@ -12,8 +12,8 @@
 
 * [eeprog.ino](https://github.com/daumiller/bitshiffed/blob/master/eeprog/eeprog.ino) - Arduino source
 * [eeprog.rb](https://github.com/daumiller/bitshiffed/blob/master/eeprog/eeprog.rb)  - read/write interface, in Ruby.
-  * requires [serialport](https://github.com/hparra/ruby-serialport) (`gem install serialport`)
-  * ([rubyserial](https://github.com/hybridgroup/rubyserial) looks nice, but had serious issues for me)
+  * requires `serialport` (`gem install serialport`)
+  * may switch to `rubyserial` in the future
 
 **License**
 

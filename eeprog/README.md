@@ -1,22 +1,21 @@
 ## EEProg ##
-------------
 
 ### Makeshift EEPROM Programmer using Arduino Micro. ###
 
-** Hardware **
+**Hardware**
 
-* [eeprog_schematic.png](url) - schematic
+* [eeprog_schematic.png](https://raw.githubusercontent.com/daumiller/bitshiffed/master/eeprog/eeprog_schematic.png) - schematic
 * Programs AT28C256 EEPROMS; possibly works with similar chips.
 * Uses shift registers as port expanders for address bus.
 
-** Software **
+**Software**
 
-* [eeprog.ino](url) - Arduino source
-* [eeprog.rb](url)  - read/write interface, in Ruby.
+* [eeprog.ino](https://github.com/daumiller/bitshiffed/blob/master/eeprog/eeprog.ino) - Arduino source
+* [eeprog.rb](https://github.com/daumiller/bitshiffed/blob/master/eeprog/eeprog.rb)  - read/write interface, in Ruby.
   * requires [serialport](https://github.com/hparra/ruby-serialport) (`gem install serialport`)
   * ([rubyserial](https://github.com/hybridgroup/rubyserial) looks nice, but had serious issues for me)
 
-** License **
+**License**
 
-* Source code is released under the 2-Clause BSD License (see LICENSE file).
+* Source code is released under the 2-Clause BSD License (see [LICENSE](https://github.com/daumiller/bitshiffed/blob/master/LICENSE) file).
 * Schematics are public domain.

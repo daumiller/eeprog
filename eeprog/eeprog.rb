@@ -195,10 +195,19 @@ class EEProg
     if major > VERSION_MAX_MAJOR
       $stderr.puts "ERROR: Firmware version #{major}.x.x not yet supported (or this program needs updated)."
       exit
-    elsif (major < VERSION_MIN_MAJOR) || (minor < VERSION_MIN_MINOR) || (patch < VERSION_MIN_PATCH)
+    end
+    
+    unless version_compare([major, minor, patch], [VERSION_MIN_MAJOR, VERSION_MIN_MINOR, VERSION_MIN_PATCH])
       $stderr.puts "ERROR: Firmware version #{major}.#{minor}.#{patch} is too old."
       $stderr.puts "       Version #{VERSION_MIN_MAJOR}.#{VERSION_MIN_MINOR}.#{VERSION_MIN_PATCH} is required for this program."
+      exit
     end
+  end
+  
+  def version_compare(version, minimum)
+    if version[0] > minimum[0] ; return true ; elsif version[0] < minimum[0] ; return false ; end
+    if version[1] > minimum[1] ; return true ; elsif version[1] < minimum[1] ; return false ; end
+    return version[2] >= minimum[2]
   end
 
   def read

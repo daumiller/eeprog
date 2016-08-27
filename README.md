@@ -1,6 +1,6 @@
-# bitshiffed #
+# eeprog #
 
-### 6502 Computer Project ###
+### 6502 Computer Project - EEPROM Programmer ###
 
 **License**
 
